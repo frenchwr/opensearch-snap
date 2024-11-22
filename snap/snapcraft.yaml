@@ -1,5 +1,5 @@
 name: opensearch # you probably want to 'snapcraft register <name>'
-base: core22 # the base snap is the execution environment for this snap
+base: core24 # the base snap is the execution environment for this snap
 
 version: '2.17.0' # just for humans, typically '1.2+git' or '1.3.2'
 
@@ -14,8 +14,8 @@ grade: stable # must be 'stable' to release into candidate/stable channels
 
 confinement: strict # use 'strict' once you have the right plugs and slots
 
-architectures:
-  - build-on: amd64
+platforms:
+  amd64:
 
 
 system-usernames:
@@ -114,15 +114,6 @@ apps:
   setup:
     command: opt/opensearch/setup.sh
 
-  plugin-add:
-    command: opt/opensearch/plugins/add.sh
-
-  plugins-list:
-    command: opt/opensearch/plugins/list.sh
-
-  plugins-remove:
-    command: opt/opensearch/plugins/remove.sh
-
   test-cluster-health-green:
     command: opt/opensearch/tests/test-cluster-health-green.sh
     plugs:
@@ -140,6 +131,86 @@ apps:
     plugs:
       - network
       - network-bind
+
+  plugin:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-plugin
+
+  cli:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-cli
+
+  env:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-env
+
+  env-from-file:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-env-from-file
+
+  keystore:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-keystore
+
+  node:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-node
+
+  shard:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-shard
+
+  upgrade:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-upgrade
+
+  performance-analyzer-agent:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-performance-analyzer/performance-analyzer-agent
+
+  performance-analyzer-agent-cli:
+    command: opt/opensearch/bin-wrapper.sh
+    plugs:
+      - network
+      - network-bind
+    environment:
+      bin_script: opensearch-performance-analyzer/performance-analyzer-agent-cli
 
 parts:
   dependencies:
@@ -165,6 +236,7 @@ parts:
       - libexpat1
       - zlib1g
 
+
   wrapper-scripts:
     plugin: nil
     source: ./scripts
@@ -182,6 +254,7 @@ parts:
       - ca-certificates-java
       - ssl-cert
       - openssl
+      - openjdk-21-jre-headless
     stage-packages:
       - openjdk-21-jdk-headless
     override-build: |
@@ -217,11 +290,6 @@ parts:
           mv "${CRAFT_PART_INSTALL}/${res}" "${CRAFT_PART_INSTALL}/usr/share/opensearch/"
       done
       chmod -R 755 "${CRAFT_PART_INSTALL}/usr/share/opensearch/bin"
-
-      # It is important to correct the user permissions for the opensearch.keystore file, after the script is executed.
-      # Given we know which user is going to be used for the daemon, we can set this correction in the keystore script.
-      # TODO: we should perhaps NOT alter the source script - but until we find a better alternative UX wise we keep it
-      echo 'chown snap_daemon:root /var/snap/opensearch/current/etc/opensearch/opensearch.keystore' >> "${CRAFT_PART_INSTALL}"/usr/share/opensearch/bin/opensearch-keystore
 
       # Final clean-up
       rm "${archive}"

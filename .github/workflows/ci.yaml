@@ -21,30 +21,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install required dependencies
-        run: |
-          sudo snap install yq
-
-      - name: Upgrade linux deps
-        run: |
-          sudo apt-get update
-          
-          # install security updates
-          sudo apt-get -s dist-upgrade \
-            | grep "^Inst" \
-            | grep -i securi \
-            | awk -F " " {'print $2'} \
-            | xargs sudo apt-get install -y
-          
-          sudo apt-get autoremove -y
-          sudo apt-get clean -y
-          sudo snap refresh snapd
-
       - id: build-snap
         name: Build snap
         uses: snapcore/action-build@v1
-        with:
-          snapcraft-channel: 7.x/candidate
 
       - name: Upload built snap job artifact
         uses: actions/upload-artifact@v4
@@ -63,10 +42,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Upgrade snapd
+      
+      - name: Install required dependencies
         run: |
-          sudo snap refresh snapd
+          sudo snap install yq
 
       - name: Download snap file
         uses: actions/download-artifact@v4
@@ -153,17 +132,17 @@ jobs:
           OPENSEARCH_PATH_CERTS: /var/snap/opensearch/current/etc/opensearch/certificates
         run: |
           # Prometheus Exporter appears in plugins listing
-          prometheus_is_there=$(sudo -E "${OPENSEARCH_BIN}"/opensearch-plugin list | grep prometheus-exporter)
+          prometheus_is_there=$(sudo opensearch.plugin list | grep prometheus-exporter)
           if [ ! "$prometheus_is_there" ]; then
             exit 1
           fi
           # repository-s3 appears in plugins listing
-          repository_s3_is_there=$(sudo -E "${OPENSEARCH_BIN}"/opensearch-plugin list | grep repository-s3)
+          repository_s3_is_there=$(sudo opensearch.plugin list | grep repository-s3)
           if [ ! "$repository_s3_is_there" ]; then
             exit 1
           fi
           # repository-gcs appears in plugins listing
-          repository_gcs_is_there=$(sudo -E "${OPENSEARCH_BIN}"/opensearch-plugin list | grep repository-gcs)
+          repository_gcs_is_there=$(sudo opensearch.plugin list | grep repository-gcs)
           if [ ! "$repository_gcs_is_there" ]; then
             exit 1
           fi
@@ -198,10 +177,10 @@ jobs:
           OPENSEARCH_LIB: /var/snap/opensearch/current/usr/share/opensearch/lib
           OPENSEARCH_PATH_CERTS: /var/snap/opensearch/current/etc/opensearch/certificates
         run: |
-          echo "TEST" | sudo tee -a testkey
+          echo "TEST" | sudo tee -a ${OPENSEARCH_PATH_CONF}/testkey
 
-          sudo -E "${OPENSEARCH_BIN}"/opensearch-keystore add-file s3.client.default.access_key ${PWD}/testkey
-          sudo -E "${OPENSEARCH_BIN}"/opensearch-keystore add-file s3.client.default.secret_key ${PWD}/testkey
+          sudo opensearch.keystore add-file s3.client.default.access_key ${OPENSEARCH_PATH_CONF}/testkey
+          sudo opensearch.keystore add-file s3.client.default.secret_key ${OPENSEARCH_PATH_CONF}/testkey
 
           sudo snap restart opensearch.daemon
           sleep 20s
@@ -264,6 +243,6 @@ jobs:
           OPENSEARCH_LIB: /var/snap/opensearch/current/usr/share/opensearch/lib
           OPENSEARCH_PATH_CERTS: /var/snap/opensearch/current/etc/opensearch/certificates
         run: |
-          sudo -E "${OPENSEARCH_BIN}"/opensearch-plugin remove repository-s3
-          sudo -E "${OPENSEARCH_BIN}"/opensearch-keystore remove s3.client.default.access_key
-          sudo -E "${OPENSEARCH_BIN}"/opensearch-keystore remove s3.client.default.secret_key
+          sudo opensearch.plugin remove repository-s3
+          sudo opensearch.keystore remove s3.client.default.access_key
+          sudo opensearch.keystore remove s3.client.default.secret_key
